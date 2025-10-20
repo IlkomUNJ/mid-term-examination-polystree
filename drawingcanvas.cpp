@@ -1,4 +1,5 @@
 #include "drawingcanvas.h"
+#include <filesystem>
 
 DrawingCanvas::DrawingCanvas(QWidget *parent)  {
     // Set a minimum size for the canvas
@@ -29,28 +30,106 @@ void DrawingCanvas::segmentDetection(){
     cout << "image width " << image.width() << endl;
     cout << "image height " << image.height() << endl;
 
-    //To not crash we set initial size of the matrix
-    vector<CustomMatrix> windows(image.width()*image.height());
+    const int windowSize = 10;
+    const int maxX = image.width() - windowSize;
+    const int maxY = image.height() - windowSize;
 
-    // Get the pixel value as an ARGB integer (QRgb is a typedef for unsigned int)
-    for(int i = 1; i < image.width()-1;i++){
-        for(int j = 1; j < image.height()-1;j++){
-            bool local_window[3][3] = {false};
-
-            for(int m=-1;m<=1;m++){
-                for(int n=-1;n<=1;n++){
-                    QRgb rgbValue = image.pixel(i+m, j+n);
-                    local_window[m+1][n+1] = (rgbValue != 0xffffffff);
+    for (int i = 0; i <= maxX; i++)
+    {
+        for (int j = 0; j <= maxY; j++)
+        {
+            QVector<QVector<bool>> local_window(windowSize, QVector<bool>(windowSize, false));
+            bool isEmpty = true;
+            for (int m = 0; m < windowSize; m++)
+            {
+                for (int n = 0; n < windowSize; n++)
+                {
+                    QRgb rgbValue = image.pixel(i + m, j + n);
+                    bool pixelOn = (rgbValue != 0xffffffff);
+                    local_window[m][n] = pixelOn;
+                    if (pixelOn)
+                    {
+                        isEmpty = false;
+                    }
                 }
             }
 
-            CustomMatrix mat(local_window);
-
-            windows.push_back(mat);
+            if (!isEmpty)
+            {
+                cout << "Window at position (" << i << ", " << j << "):" << endl;
+                for (int m = 0; m < windowSize; m++)
+                {
+                    for (int n = 0; n < windowSize; n++)
+                    {
+                        cout << (local_window[m][n] ? "1" : "0") << " ";
+                    }
+                    cout << endl;
+                }
+                cout << endl;
+            }
         }
     }
+
     return;
 }
+
+// Implementasi kode dari Gemini
+// void DrawingCanvas::segmentDetection(){
+//     QPixmap pixmap = this->grab();
+//     QImage image = pixmap.toImage();
+
+//     const QList<QPair<int, int>> windowSizes = {{3, 3}, {5, 5}, {7, 7}, {10, 10}, {20, 20}, {50, 50}, {100, 100}};
+
+//     for (const auto &size : windowSizes) {
+//         const int windowWidth = size.first;
+//         const int windowHeight = size.second;
+
+//         QString dirName = QString("output_w%1_h%2").arg(windowWidth).arg(windowHeight);
+//         const std::filesystem::path dirPath = dirName.toStdString();
+//         if (!std::filesystem::exists(dirPath)) {
+//             std::filesystem::create_directories(dirPath);
+//         }
+
+//         const int maxX = image.width() - windowWidth;
+//         const int maxY = image.height() - windowHeight;
+//         if (maxX < 0 || maxY < 0) {
+//             continue;
+//         }
+
+//         int strideX = windowWidth / 2;
+//         int strideY = windowHeight / 2;
+//         if (strideX < 1) {
+//             strideX = 1;
+//         }
+//         if (strideY < 1) {
+//             strideY = 1;
+//         }
+
+//         int windowCount = 0;
+//         for (int j = 0; j <= maxY; j += strideY) {
+//             for (int i = 0; i <= maxX; i += strideX) {
+//                 bool isEmpty = true;
+//                 for (int y = j; y < j + windowHeight && isEmpty; ++y) {
+//                     for (int x = i; x < i + windowWidth; ++x) {
+//                         if (image.pixel(x, y) != 0xffffffff) {
+//                             isEmpty = false;
+//                             break;
+//                         }
+//                     }
+//                 }
+
+//                 if (!isEmpty) {
+//                     QRect windowRect(i, j, windowWidth, windowHeight);
+//                     QImage windowImage = image.copy(windowRect);
+//                     QString fileName = QString("%1/window_%2.png").arg(dirName).arg(windowCount++);
+//                     windowImage.save(fileName);
+//                 }
+//             }
+//         }
+
+//         Q_UNUSED(windowCount);
+//     }
+// }
 
 void DrawingCanvas::paintEvent(QPaintEvent *event){
     QPainter painter(this);
